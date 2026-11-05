@@ -55,7 +55,7 @@ Existing AGENTS.md and Hermes SOUL.md content is preserved; the installer adds o
 
 ## GitHub authentication
 
-Git and GitHub CLI are installed when missing and WinGet is available. GitHub authentication is optional for public repositories, but recommended for authenticated code search, private repositories, and PR workflows. The installer offers to run gh auth login.
+Git is required; the installer uses WinGet to install it if it is missing. GitHub CLI is optional and offered interactively. GitHub authentication is not required for public web research or cloning public repositories, but is recommended for authenticated code search, private repositories, and PR workflows. The installer offers to run gh auth login.
 
 ## Security and behavior
 

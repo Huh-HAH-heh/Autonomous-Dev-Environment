@@ -158,17 +158,34 @@ try {
     Invoke-Native -FilePath (Get-Command git.exe).Source -Arguments @("--version")
 
     Write-Step "Installing Hermes Agent from the official installer"
-    $bootstrapUri = "https://hermes-agent.nousresearch.com/install.ps1"
-    $bootstrapResponse = Invoke-WebRequest -Uri $bootstrapUri -UseBasicParsing -Headers @{
-        "User-Agent" = "Autonomous-Dev-Environment-Installer"
+    # Official Windows-native installer source from the Hermes GitHub repository.
+    # The website endpoint can return HTTP 403 on some networks; the official
+    # Windows-native guide recommends this raw GitHub URL.
+    $bootstrapUri = "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1"
+    try {
+        $bootstrapResponse = Invoke-WebRequest -Uri $bootstrapUri -UseBasicParsing -Headers @{
+            "User-Agent" = "Autonomous-Dev-Environment-Installer"
+        }
     }
+    catch {
+        $statusCode = $null
+        if ($_.Exception.Response) {
+            try { $statusCode = [int]$_.Exception.Response.StatusCode } catch {}
+        }
+        throw ("Could not download the official Hermes installer from {0}. HTTP status: {1}. Details: {2}" -f $bootstrapUri, $statusCode, $_.Exception.Message)
+    }
+
     $bootstrapText = [string]$bootstrapResponse.Content
-    if ([string]::IsNullOrWhiteSpace($bootstrapText) -or $bootstrapText -notmatch "Hermes") {
-        throw "The official Hermes bootstrap response was empty or unexpected. No installer code was executed."
+    if ([string]::IsNullOrWhiteSpace($bootstrapText) -or
+        $bootstrapText -notmatch "Hermes Agent bootstrap" -or
+        $bootstrapText -notmatch "param\(" -or
+        $bootstrapText -notmatch "NonInteractive" -or
+        $bootstrapText -notmatch "Channel") {
+        throw "The official Hermes bootstrap response was empty or did not match the expected installer script. No installer code was executed."
     }
 
     $bootstrap = [scriptblock]::Create($bootstrapText)
-    & $bootstrap -NonInteractive -Channel stable
+    & $bootstrap -NonInteractive -Channel stable -Verbose
 
     $hermesBin = Join-Path $env:LOCALAPPDATA "hermes\bin"
     if (Test-Path $hermesBin) {

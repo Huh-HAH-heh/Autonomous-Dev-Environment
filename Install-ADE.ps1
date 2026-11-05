@@ -227,6 +227,9 @@ try {
     # Avoid a second package-install command here; package aliases differ by
     # Hermes release and an additional install is unnecessary.
 
+    Write-Step "Installing the DuckDuckGo search dependency"
+    Invoke-Hermes -Arguments @("tools", "post-setup", "ddgs")
+
     Write-Step "Configuring web research, memory, delegation, and safety"
     $settings = @(
         @("web.search_backend", "ddgs"),

@@ -241,7 +241,7 @@ try {
         @("checkpoints.enabled", "true"),
         @("checkpoints.max_snapshots", "20"),
         @("security.redact_secrets", "true"),
-        @("pm.allow_lazy_installs", "true"),
+        @("security.allow_lazy_installs", "true"),
         @("skills.guard_agent_created", "true")
     )
 

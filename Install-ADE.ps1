@@ -184,8 +184,26 @@ try {
         throw "The official Hermes bootstrap response was empty or did not match the expected installer script. No installer code was executed."
     }
 
-    $bootstrap = [scriptblock]::Create($bootstrapText)
-    & $bootstrap -NonInteractive -Channel stable -Verbose
+    # Run the official installer in a separate PowerShell process.
+    # Its script-scoped variables must not inherit this installer's StrictMode
+    # or script scope. In-process ScriptBlock execution caused
+    # "$script:BootstrapPython is not set" on Windows.
+    $bootstrapFile = Join-Path $LogRoot ("hermes-bootstrap-{0}.ps1" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+    Write-Utf8NoBom -Path $bootstrapFile -Content $bootstrapText
+
+    $windowsPowerShell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (-not (Test-Path -LiteralPath $windowsPowerShell -PathType Leaf)) {
+        $powerShellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+        if (-not $powerShellCommand) {
+            throw "Neither Windows PowerShell nor PowerShell 7 was found to run the official Hermes installer."
+        }
+        $windowsPowerShell = $powerShellCommand.Source
+    }
+
+    Invoke-Native -FilePath $windowsPowerShell -Arguments @(
+        "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", $bootstrapFile, "-NonInteractive", "-Channel", "stable", "-Verbose"
+    )
 
     $hermesBin = Join-Path $env:LOCALAPPDATA "hermes\bin"
     if (Test-Path $hermesBin) {
@@ -204,8 +222,10 @@ try {
     Write-Step "Verifying Hermes"
     Invoke-Hermes -Arguments @("--version")
 
-    Write-Step "Ensuring the local Chromium browser"
-    Invoke-Hermes -Arguments @("pm", "install", "chromium")
+    Write-Step "Checking browser runtime"
+    # The official Hermes full installer installs its default browser runtime.
+    # Avoid a second package-install command here; package aliases differ by
+    # Hermes release and an additional install is unnecessary.
 
     Write-Step "Configuring web research, memory, delegation, and safety"
     $settings = @(
@@ -221,7 +241,7 @@ try {
         @("checkpoints.enabled", "true"),
         @("checkpoints.max_snapshots", "20"),
         @("security.redact_secrets", "true"),
-        @("security.allow_lazy_installs", "true"),
+        @("pm.allow_lazy_installs", "true"),
         @("skills.guard_agent_created", "true")
     )
 

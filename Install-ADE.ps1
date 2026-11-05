@@ -112,7 +112,7 @@ try {
     if (-not [Environment]::Is64BitOperatingSystem) {
         throw "A 64-bit Windows installation is required."
     }
-    if ($PSVersionTable.PSVersion.Major -lt 5) {
+    if ($PSVersionTable.PSVersion.Major -lt 5 -or ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -lt 1)) {
         throw "PowerShell 5.1 or newer is required."
     }
 
@@ -238,6 +238,9 @@ try {
         Write-Step "Installing project-specific instructions"
         $project = Resolve-Path -LiteralPath $ProjectPath -ErrorAction Stop
         $projectRoot = $project.Path
+        if (-not (Test-Path -LiteralPath $projectRoot -PathType Container)) {
+            throw "ProjectPath must point to an existing directory."
+        }
         $templatePath = Join-Path $RepoRoot "templates\AGENTS.md"
         if (-not (Test-Path $templatePath)) {
             throw "Missing project template: $templatePath"
@@ -324,7 +327,7 @@ catch {
     Write-Host ""
     Write-Host ("INSTALLATION FAILED: " + $_.Exception.Message) -ForegroundColor Red
     Write-Host ("Review the log: " + $LogPath) -ForegroundColor Yellow
-    Write-Host "No existing project repositories or user files were intentionally modified."
+    Write-Host "Existing project source files were not intentionally modified. The Hermes profile or optional project AGENTS.md may already have been updated."
     exit 1
 }
 finally {
